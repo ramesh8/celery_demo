@@ -1,0 +1,77 @@
+version: "3.8"
+networks:
+  my-network:
+    driver: bridge
+
+services:
+  myserver:
+    hostname: myserver
+    build: ./project/myserver
+    ports:
+      - 8001:8000
+    command: uvicorn app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./project/myserver:/usr/src/app
+    networks:
+      - my-network
+  webserver:
+    hostname: webserver
+    build: ./project/web
+    ports:
+      - 8002:8000
+    command: uvicorn app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./project/web:/usr/src/app
+    networks:
+      - my-network
+  worker:
+    build: ./project/myserver
+    command: celery -A worker.celery worker --loglevel=info --logfile=logs/celery.log
+    volumes:
+      - ./project/myserver:/usr/src/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - my-network
+  dashboard:
+    build: ./project/myserver
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - 8000:5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - my-network
+  redis:
+    image: redis:7
+    hostname: redis
+    container_name: redis
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    networks:
+      - my-network
+  mongodbserver:
+    image: mongo:6.0
+    hostname: mongodbserver
+    environment:
+      - HOME=/data/db
+    volumes:
+      # - /var/lib/mongodb:/data/db
+      - E:\docker\volume_backups\mongodb:/data/db
+    ports:
+      - 27017:27017
+    networks:
+      - my-network

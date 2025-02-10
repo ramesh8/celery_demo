@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pymongo
+celery
+redis
+requests
+flower
