@@ -7,6 +7,18 @@
 </head>
 <body>
     <h1>🔗 Parallels</h1>
-    <p>{{result}}</p>
+    <p>Click <button onclick="start_task()">Start Task</button> to start simulate new task chain.</p>
+    <div id="log">
+
+    </div>
+
+    <script type="text/javascript">
+        function start_task(){
+            url = "/start_task"
+            fetch(url).then(res=>res.json()).then(res=>{
+                document.querySelector("#log").innerHTML += res +"<br/>";
+            });
+        }
+    </script>
 </body>
 </html>

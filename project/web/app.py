@@ -9,7 +9,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
-def index(request:Request):
-    response = requests.get("http://myserver:8000/task")
-    return templates.TemplateResponse(request=request, name="index.html", context={"result":response.content})
+def index(request:Request):    
+    return templates.TemplateResponse(request=request, name="index.html", context={"request":request})
 
+@app.get("/start_task")
+def start_task(request:Request):
+    response = requests.get("http://myserver:8000/task")
+    return response.content
