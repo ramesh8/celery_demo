@@ -5,7 +5,7 @@ import random
 import time
 import os
 import json
-from worker import start_task_chain, record_task
+from worker import start_task_chain, record_task, run_stasks
 
 app = FastAPI()
 
@@ -24,4 +24,9 @@ def home(request:Request):
 def task(bgtask:BackgroundTasks, request:Request):
     fname = "sample_pages.json"
     tid = processData(f"data/{fname}")
-    return "background task added"
+    return "task chain added"
+
+@app.get("/stasks")
+def stasks(request:Request):
+    run_stasks()
+    return "special tasks started"

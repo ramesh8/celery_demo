@@ -4,6 +4,80 @@ networks:
     driver: bridge
 
 services:
+  leek:
+    image: kodhive/leek
+    environment:
+      # General
+      - LEEK_API_LOG_LEVEL=WARNING
+      - LEEK_AGENT_LOG_LEVEL=INFO
+      # Components
+      - LEEK_ENABLE_API=true
+      - LEEK_ENABLE_AGENT=true
+      - LEEK_ENABLE_WEB=true
+      # URLs
+      - LEEK_API_URL=http://localhost:5000
+      - LEEK_WEB_URL=http://localhost:8000
+      - LEEK_ES_URL=http://es01:9200
+      # Authentication
+      - LEEK_API_ENABLE_AUTH=false
+      # App
+      - LEEK_CREATE_APP_IF_NOT_EXIST=true
+      # Subscriptions
+      - |
+        LEEK_AGENT_SUBSCRIPTIONS=
+        [
+          {
+            "broker": "redis://redis:6379/0",
+            "broker_management_url": "http://redis:6379",
+            "backend": null,
+            "exchange": "celeryev",
+            "queue": "leek.fanout",
+            "routing_key": "#",
+            "org_name": "mono",
+            "app_name": "leek",
+            "app_env": "prod",
+            "prefetch_count": 1000,
+            "concurrency_pool_size": 2,
+            "batch_max_size_in_mb": 1,
+            "batch_max_number_of_messages": 1000,
+            "batch_max_window_in_seconds": 5
+          }
+        ]
+      - LEEK_AGENT_API_SECRET=not-secret
+    ports:
+      - 5000:5000
+      - 8000:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - my-network
+  es01:
+    image: elasticsearch:7.10.1
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - cluster.initial_master_nodes=es01
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    command: ["elasticsearch", "-Elogger.level=ERROR"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65535
+        hard: 65535
+    ports:
+      - 9200:9200
+    networks:
+      - my-network
   myserver:
     hostname: myserver
     build: ./project/myserver
@@ -26,7 +100,7 @@ services:
       - my-network
   worker:
     build: ./project/myserver
-    command: celery -A worker.celery worker --loglevel=info --logfile=logs/celery.log
+    command: celery -A worker.celery worker -E -l critical -n test-worker2@%h
     volumes:
       - ./project/myserver:/usr/src/app
     environment:
@@ -37,19 +111,19 @@ services:
         condition: service_healthy
     networks:
       - my-network
-  dashboard:
-    build: ./project/myserver
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
-    ports:
-      - 8000:5555
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - my-network
+  # dashboard:
+  #   build: ./project/myserver
+  #   command: celery --broker=redis://redis:6379/0 flower --port=5555
+  #   ports:
+  #     - 8005:5555
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - my-network
   redis:
     image: redis:7
     hostname: redis
@@ -72,6 +146,6 @@ services:
       # - /var/lib/mongodb:/data/db
       - E:\docker\volume_backups\mongodb:/data/db
     ports:
-      - 27017:27017
+      - 27018:27017
     networks:
       - my-network

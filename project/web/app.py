@@ -16,3 +16,8 @@ def index(request:Request):
 def start_task(request:Request):
     response = requests.get("http://myserver:8000/task")
     return response.content
+
+@app.get("/start_stasks")
+def start_task(request:Request):
+    response = requests.get("http://myserver:8000/stasks")
+    return response.content
